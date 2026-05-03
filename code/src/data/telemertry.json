@@ -1,0 +1,34 @@
+[{
+    "timestamp": "2025-03-24T10:15:32Z",
+    "server": "server-1",
+    "service": "Order Service",
+    "metric": "CPU Usage",
+    "value": "85%",
+    "severity": "warning",
+    "message": "High CPU usage detected"
+},{
+    "timestamp": "2025-03-24T10:15:32Z",
+    "server": "server-2",
+    "service": "Customer Service",
+    "metric": "CPU Usage",
+    "value": "30%",
+    "severity": "info",
+    "message": "Normal CPU usage detected"
+},{
+    "timestamp": "2025-03-24T10:15:32Z",
+    "server": "server-3",
+    "service": "Delivery Service",
+    "metric": "CPU Usage",
+    "value": "95%",
+    "severity": "warning",
+    "message": "High CPU usage detected"
+},{
+    "timestamp": "2025-03-24T10:15:32Z",
+    "server": "server-3",
+    "service": "Delivery Service",
+    "metric": "Thread Blocks",
+    "value": "100",
+    "severity": "warning",
+    "message": "There are deadlocks seen in server-12",
+    "details": "2025-03-24 13:10:05.123 WARN  [server-12] com.threadpool.Executor - Thread Worker-Thread-5 is blocked waiting for lock on object com.example.Resource@0x123abc"
+}]
