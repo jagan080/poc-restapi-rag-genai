@@ -62,13 +62,12 @@ if user_input and isinstance(user_input, str):
     st.session_state.chat_history.append(HumanMessage(content=user_input))
 
 if user_input:
+        print("the user input is : "+user_input) 
         context = retrieve_context(user_input)
         print("the context is : "+context)
-        if context:
-            answer = generate_response(user_input, context)
-            st.session_state.chat_history.append(AIMessage(content=answer))
-        else:
-            st.session_state.chat_history.append(AIMessage(content="No relevant context found!"))
+        answer = generate_response(user_input, context)
+        st.session_state.chat_history.append(AIMessage(content=answer))
+        print("\nThe response is : "+answer)
 
 # Display chat history in a conversational format
 for message in st.session_state.chat_history:

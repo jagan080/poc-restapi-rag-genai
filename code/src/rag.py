@@ -10,12 +10,17 @@ import requests
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from docx import Document
-from agent_setup import run_agent 
+from google.oauth2 import service_account
+from agent_setup import run_agent
+from vertexai.preview.language_models import TextEmbeddingModel
+
+#embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
 
 # ============================================
 # CONFIGURATION: Choose LLM Provider (1, 2, or 3)
 # ============================================
-LLM_PROVIDER = 2  # Change this to switch: 1=HuggingFace, 2=Ollama, 3=Gemini Vertex AI
+LLM_PROVIDER = 3  # Change this to switch: 1=HuggingFace, 2=Ollama, 3=Gemini Vertex AI
+KEY_PATH = "ai-demo-495305-6fa129b22c7a.json"
 
 # ============================================
 # LLM Backend Abstraction
@@ -23,7 +28,7 @@ LLM_PROVIDER = 2  # Change this to switch: 1=HuggingFace, 2=Ollama, 3=Gemini Ver
 
 class LLMBackend:
     """Base class for LLM backends"""
-    def call(self, messages, temperature=0.7, max_tokens=500):
+    def call(self, messages, temperature=0.7, max_tokens=4096):
         raise NotImplementedError
 
 class HuggingFaceBackend(LLMBackend):
@@ -35,7 +40,7 @@ class HuggingFaceBackend(LLMBackend):
             model="katanemo/Arch-Router-1.5B",
         )
     
-    def call(self, messages, temperature=0.7, max_tokens=500):
+    def call(self, messages, temperature=0.7, max_tokens=4096):
         try:
             response = self.client.chat_completion(
                 messages=messages,
@@ -52,7 +57,7 @@ class OllamaBackend(LLMBackend):
         self.api_url = "http://localhost:11434/api/generate"
         self.model = "deepseek-r1:7b"
       
-    def call(self, messages, temperature=0.7, max_tokens=500):
+    def call(self, messages, temperature=0.7, max_tokens=4096):
         try:
             # Convert messages to prompt format
             prompt = self._format_messages_to_prompt(messages)
@@ -90,21 +95,27 @@ class GeminiVertexAIBackend(LLMBackend):
     """Google Vertex AI Gemini Backend"""
     def __init__(self):
         try:
-            from google.cloud import aiplatform
-            self.aiplatform = aiplatform
-            self.aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location="us-central1")
-        except ImportError:
-            raise ImportError("google-cloud-aiplatform not installed. Run: pip install google-cloud-aiplatform")
+            import vertexai
+            from vertexai.preview.generative_models import GenerativeModel
+            
+            credentials = service_account.Credentials.from_service_account_file(KEY_PATH)
+            vertexai.init(
+                project="ai-demo-495305",
+                location="us-central1",
+                credentials=credentials,
+            )
+            self.model = GenerativeModel("gemini-2.5-pro")
+        except ImportError as e:
+            raise ImportError(f"Vertex AI dependencies not installed: {str(e)}. Run: pip install google-cloud-aiplatform")
     
-    def call(self, messages, temperature=0.7, max_tokens=500):
+    def call(self, messages, temperature=0.7, max_tokens=4096):
         try:
             system_message = next((msg["content"] for msg in messages if msg["role"] == "system"), "")
             user_message = next((msg["content"] for msg in messages if msg["role"] == "user"), "")
             
-            model = self.aiplatform.GenerativeModel("gemini-1.5-pro")
             full_message = f"{system_message}\n\n{user_message}" if system_message else user_message
             
-            response = model.generate_content(
+            response = self.model.generate_content(
                 full_message,
                 generation_config={
                     "max_output_tokens": max_tokens,
@@ -169,6 +180,7 @@ def add_document_to_db(doc_text_list, doc_id):
             embeddings=[embeddings[i]],
             metadatas=[{"text": sentence}]
         )
+
 
 
 # Function to extract text from Excel file
@@ -277,18 +289,38 @@ def load_initial_knowledge(folder_path=None):
         print(f"Error loading initial knowledge: {str(e)}")  
 
 # Function to retrieve relevant documents
-def retrieve_context(query, top_k=3):
+def retrieve_context(query, top_k=3, similarity_threshold=0.5):
+    """Retrieve relevant documents from ChromaDB based on query similarity.
+    
+    Args:
+        query: Search query string
+        top_k: Number of top results to retrieve
+        similarity_threshold: Minimum similarity score (0-1) to include result
+    
+    Returns:
+        Concatenated text of matching documents
+    """
     embedding_model = get_embedding_model()
     query_embedding = embedding_model.encode([query]).tolist()[0]
-    results = collection.query(query_embeddings=[query_embedding], n_results=top_k)
-    retrieved_texts = [doc["text"] for doc in results["metadatas"][0]]
+    results = collection.query(query_embeddings=[query_embedding], n_results=top_k, include=["distances", "metadatas"])
+    
+    # Filter results by similarity threshold
+    retrieved_texts = []
+    if results.get("distances") and len(results["distances"]) > 0:
+        for i, distance in enumerate(results["distances"][0]):
+            # ChromaDB uses Euclidean distance (0 = perfect match, higher = less similar)
+            # Normalize to similarity score (1 - normalized_distance)
+            similarity = 1 - (distance / 2)  # Normalize assuming max distance ~2 for cosine
+            if similarity >= similarity_threshold:
+                retrieved_texts.append(results["metadatas"][0][i]["text"])
+    
     return " ".join(retrieved_texts)
 
 # Function to generate response using LLM
 def generate_response(prompt, context):
     # Check if RAG context is empty or insufficient
     has_rag_content = context and context.strip() and context.strip() != ""
-    
+    print(f"RAG context available: {has_rag_content}")
     system_prompt = """You are a highly skilled AI assistant. Your primary role is to provide helpful and accurate answers to user queries.
 
 CONTEXT HANDLING:
@@ -314,5 +346,5 @@ Guidelines:
     ]
     
     # Use the configured LLM backend
-    return llm_backend.call(messages, temperature=0.7, max_tokens=500)
+    return llm_backend.call(messages, temperature=0.7, max_tokens=4096)
  
