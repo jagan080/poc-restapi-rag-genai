@@ -1,88 +1,130 @@
-import streamlit as st
-from langchain_core.messages import AIMessage, HumanMessage
-from agent_setup import run_agent
-from rag import extract_text_from_excel,extract_text_from_pdf, extract_text_from_docx,add_document_to_db, retrieve_context, generate_response, load_initial_knowledge
+from flask import Flask, request, jsonify
+from rag import retrieve_context, generate_response, load_initial_knowledge
+import logging
 
-# Mock action suggestions (can be expanded dynamically)
-actions = [
-    {"name": "Restart Service"},
-    {"name": "Get Service Status"},
-    {"name": "Get System Logs"},
-    {"name": "Send Email"}
-]
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-# Set the Streamlit page layout
-st.set_page_config(page_title="Platform Engineer Chatbot", layout="wide")
+# Initialize Flask app
+app = Flask(__name__)
 
-st.title("🤖 Platform Engineer Assistant")
+# Global variable to track if knowledge base has been loaded
+knowledge_base_loaded = False
 
-# File Upload
-uploaded_file = st.file_uploader("Update Knowledge Base", type=["xlsx", "pdf", "docx"])
-if uploaded_file:
-    st.write("Processing document...")
-    file_type = uploaded_file.name.split(".")[-1].lower()
+@app.before_request
+def load_knowledge_base_once():
+    """Load the knowledge base only once when the app starts"""
+    global knowledge_base_loaded
+    if not knowledge_base_loaded:
+        try:
+            logger.info("Loading knowledge base at application startup...")
+            load_initial_knowledge("data")
+            knowledge_base_loaded = True
+            logger.info("Knowledge base loaded successfully!")
+        except Exception as e:
+            logger.error(f"Error loading knowledge base: {str(e)}")
+            knowledge_base_loaded = True  # Set to True to prevent repeated attempts
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        "status": "healthy",
+        "knowledge_base_loaded": knowledge_base_loaded
+    }), 200
+
+@app.route('/api/prompt', methods=['POST'])
+def prompt_handler():
+    """
+    POST endpoint to send a prompt and get response from LLM or RAG
     
-    if file_type == "xlsx":
-        document_text = extract_text_from_excel(uploaded_file)
-    elif file_type == "pdf":
-        document_text = extract_text_from_pdf(uploaded_file)
-    elif file_type == "docx":
-        document_text = extract_text_from_docx(uploaded_file)
+    Request JSON format:
+    {
+        "prompt": "Your question or prompt here"
+    }
     
-    add_document_to_db(document_text, uploaded_file.name)
-    st.success("Document added to ChromaDB!")
+    Response JSON format:
+    {
+        "prompt": "Your original prompt",
+        "response": "AI-generated response",
+        "context_used": "Context retrieved from knowledge base",
+        "success": true
+    }
+    """
+    try:
+        # Get JSON data from request
+        data = request.get_json()
+        
+        if not data or "prompt" not in data:
+            return jsonify({
+                "error": "Missing 'prompt' field in request body",
+                "success": False
+            }), 400
+        
+        prompt = data.get("prompt")
+        
+        if not isinstance(prompt, str) or not prompt.strip():
+            return jsonify({
+                "error": "Prompt must be a non-empty string",
+                "success": False
+            }), 400
+        
+        logger.info(f"Processing prompt: {prompt[:100]}...")
+        
+        # Retrieve context from knowledge base
+        context = retrieve_context(prompt)
+        logger.info(f"Retrieved context length: {len(context)} characters")
+        
+        # Generate response using LLM with RAG context
+        response = generate_response(prompt, context)
+        logger.info(f"Generated response length: {len(response)} characters")
+        
+        return jsonify({
+            "prompt": prompt,
+            "response": response,
+            "context_used": context if context.strip() else "No relevant context found",
+            "success": True
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error processing prompt: {str(e)}")
+        return jsonify({
+            "error": f"Internal server error: {str(e)}",
+            "success": False
+        }), 500
 
-# Initialize chat history if not present
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-# Load initial knowledge only once
-if "knowledge_loaded" not in st.session_state:
-    with st.spinner("Loading knowledge base..."):
+@app.route('/api/reload-knowledge-base', methods=['POST'])
+def reload_knowledge_base():
+    """Endpoint to manually reload the knowledge base"""
+    try:
+        logger.info("Manually reloading knowledge base...")
         load_initial_knowledge("data")
-    st.session_state.knowledge_loaded = True
+        logger.info("Knowledge base reloaded successfully!")
+        return jsonify({
+            "message": "Knowledge base reloaded successfully",
+            "success": True
+        }), 200
+    except Exception as e:
+        logger.error(f"Error reloading knowledge base: {str(e)}")
+        return jsonify({
+            "error": f"Failed to reload knowledge base: {str(e)}",
+            "success": False
+        }), 500
 
-# Sidebar Info
-with st.sidebar:
-    st.markdown("### 👨‍💻 About Me")
-    st.write(
-        "I'm a **Platform Engineer Assistant**, here to help with:\n"
-        "- Server restarts 🔄\n"
-        "- Checking service health ✅\n"
-        "- Debugging deployment issues 🛠️\n"
-        "- Fetching logs 📜\n"
-        "- Ask me anything!"
-    )
-# Chat UI
-st.markdown("### 💬 Chat with the AI")
-
-# User Input Field
-user_input = st.chat_input("Ask me anything about platform engineering...")
-if user_input and isinstance(user_input, str):
-    st.session_state.chat_history.append(HumanMessage(content=user_input))
-
-if user_input:
-        print("the user input is : "+user_input) 
-        context = retrieve_context(user_input)
-        print("the context is : "+context)
-        answer = generate_response(user_input, context)
-        st.session_state.chat_history.append(AIMessage(content=answer))
-        print("\nThe response is : "+answer)
-
-# Display chat history in a conversational format
-for message in st.session_state.chat_history:
-    if isinstance(message, HumanMessage):
-        st.markdown(f"🟢 **Platform Engineer:** {message.content}")
-    else:
-        st.markdown(f"🤖 **AI Bot:** {message.content}")
-        
-        
-# Display suggested actions
-if actions and len(st.session_state.chat_history) > 1:
-    st.markdown("### Agentic AI:")
-    for action in actions:
-        if st.button(action["name"]):
-            st.session_state.chat_history.append(HumanMessage(content=action["name"]))
-            action_response = run_agent(action["name"])
-            st.session_state.chat_history.append(AIMessage(content=action_response.messages[1].content))
-            st.rerun()
+if __name__ == "__main__":
+    # Load knowledge base on startup
+    try:
+        logger.info("Starting Flask application...")
+        logger.info("Loading initial knowledge base...")
+        load_initial_knowledge()
+        knowledge_base_loaded = True
+        logger.info("Knowledge base loaded successfully at startup!")
+    except Exception as e:
+        logger.error(f"Failed to load knowledge base at startup: {str(e)}")
+    
+    # Run Flask app
+    app.run(host="0.0.0.0", port=5001, debug=False)

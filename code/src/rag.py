@@ -199,6 +199,7 @@ def extract_text_from_pdf(pdf_path):
     try:
         text_list = []
         with fitz.open(stream=pdf_path, filetype="pdf") as doc:
+            print(f"Number of pages in PDF: {doc.page_count}")
             for page in doc:
                 page_text = page.get_text("text")
                 if page_text.strip():
@@ -263,6 +264,7 @@ def load_initial_knowledge(folder_path=None):
         base_dir = os.path.dirname(os.path.abspath(__file__))  
         if folder_path is None:
             folder_path = os.path.join(base_dir, "data")
+            print  (f"Loading knowledge base from default folder: {folder_path}")
         if not os.path.exists(folder_path):
             print(f"Data folder not found: {folder_path}")
             return

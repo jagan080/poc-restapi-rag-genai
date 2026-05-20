@@ -1,4 +1,4 @@
-streamlit
+flask
 chromadb
 sentence-transformers
 transformers
