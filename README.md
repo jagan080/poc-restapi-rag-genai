@@ -24,7 +24,7 @@
 
 **RAG GenAI API** is an advanced Retrieval-Augmented Generation (RAG) powered API that combines:
 - **Vector-based document retrieval** for context-aware responses
-- **Multiple LLM provider support** (HuggingFace, Ollama, Google Vertex AI)
+- **Multiple LLM provider support** (Ollama, Google Vertex AI)
 - **Production-ready deployment** options (Cloud Run, GKE)
 - **Interactive API documentation** with Swagger UI
 - **Comprehensive logging and monitoring**
@@ -71,7 +71,6 @@ This API is designed for platform support teams to streamline knowledge manageme
                                        ▼
                         ┌──────────────────────────┐
                         │  LLM Backends            │
-                        │  • HuggingFace Inference │
                         │  • Ollama (Local)        │
                         │  • Vertex AI Gemini      │
                         └──────────────────────────┘
@@ -90,7 +89,7 @@ This API is designed for platform support teams to streamline knowledge manageme
 
 ## ✨ Features
 
-- ✅ **Multi-LLM Support**: HuggingFace, Ollama, Google Vertex AI
+- ✅ **Multi-LLM Support**: Ollama, Google Vertex AI
 - ✅ **Vector-based RAG**: Semantic search with ChromaDB
 - ✅ **Swagger/OpenAPI Documentation**: Interactive API explorer at `/api/docs`
 - ✅ **Multiple File Format Support**: PDF, JSON, DOCX, TXT, Excel
@@ -110,7 +109,7 @@ This API is designed for platform support teams to streamline knowledge manageme
 | **Server** | Uvicorn 0.24.0 |
 | **Vector Database** | ChromaDB 1.5.9 |
 | **Embeddings** | SentenceTransformers (all-MiniLM-L6-v2) |
-| **LLMs** | HuggingFace, Ollama, Vertex AI |
+| **LLMs** | Ollama, Vertex AI |
 | **Document Processing** | PyMuPDF, python-docx, pandas |
 | **Container** | Docker |
 | **Orchestration** | Kubernetes (GKE) |
@@ -182,7 +181,7 @@ This API is designed for platform support teams to streamline knowledge manageme
 Create a `.env` file in `code/src/` directory:
 
 ```env
-# LLM Provider (1=HuggingFace, 2=Ollama, 3=Vertex AI)
+# LLM Provider (2=Ollama, 3=Vertex AI)
 LLM_PROVIDER=3
 
 # API Configuration
@@ -194,9 +193,6 @@ LOG_LEVEL=INFO
 # Google Cloud
 GOOGLE_CLOUD_PROJECT=your-project-id
 VERTEX_AI_LOCATION=us-central1
-
-# HuggingFace (if using provider 1)
-HUGGINGFACE_API_KEY=your-api-key
 
 # RAG Configuration
 RAG_TOP_K=3
@@ -277,17 +273,12 @@ http://<host>:<port>/api/redoc
    export REGION="us-central1"
    ```
 
-2. **Create secrets in Google Secret Manager**
-   ```bash
-   gcloud secrets create huggingface-api-key --data-file=- <<< "your-api-key"
-   ```
-
-3. **Deploy using script**
+2. **Deploy using script**
    ```bash
    bash deploy-cloud-run.sh $PROJECT_ID $REGION
    ```
 
-4. **Or deploy manually**
+3. **Or deploy manually**
    ```bash
    gcloud run deploy rag-genai-api \
      --source . \
@@ -295,8 +286,7 @@ http://<host>:<port>/api/redoc
      --platform managed \
      --memory 2Gi \
      --cpu 1 \
-     --set-env-vars "LLM_PROVIDER=3" \
-     --set-secrets "HUGGINGFACE_API_KEY=huggingface-api-key:latest"
+     --set-env-vars "LLM_PROVIDER=3"
    ```
 
 #### Verify Deployment

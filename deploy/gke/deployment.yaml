@@ -37,7 +37,6 @@ type: Opaque
 stringData:
   llm_provider: "3"
   gcp_project_id: "your-gcp-project-id"
-  huggingface_api_key: "your-huggingface-api-key"
 ---
 apiVersion: apps/v1
 kind: Deployment

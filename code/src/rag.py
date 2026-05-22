@@ -1,7 +1,6 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 from transformers import pipeline
-from huggingface_hub import InferenceClient
 import pandas as pd
 import fitz  # PyMuPDF
 import json
@@ -23,7 +22,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # ============================================
 # CONFIGURATION: Load from environment variables
 # ============================================
-# LLM_PROVIDER: 1=HuggingFace, 2=Ollama, 3=Gemini Vertex AI
+# LLM_PROVIDER: 1=Ollama, 2=Gemini Vertex AI
 LLM_PROVIDER = int(os.getenv("LLM_PROVIDER", "2"))
 KEY_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
 
@@ -35,26 +34,6 @@ class LLMBackend:
     """Base class for LLM backends"""
     def call(self, messages, temperature=0.7, max_tokens=4096):
         raise NotImplementedError
-
-class HuggingFaceBackend(LLMBackend):
-    """HuggingFace Inference API Backend"""
-    def __init__(self):
-        self.client = InferenceClient(
-            provider="hf-inference",
-            api_key=os.getenv("HUGGINGFACE_API_KEY", ""),
-            model="katanemo/Arch-Router-1.5B",
-        )
-    
-    def call(self, messages, temperature=0.7, max_tokens=4096):
-        try:
-            response = self.client.chat_completion(
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-            )
-            return response.choices[0].message["content"] if response.choices else "Error: No response"
-        except Exception as e:
-            return f"Error: {str(e)}"
 
 class OllamaBackend(LLMBackend):
     """Ollama Local LLM Backend using /api/generate endpoint"""
@@ -167,16 +146,13 @@ def get_llm_backend():
     """Factory function to create the appropriate LLM backend"""
     try:
         if LLM_PROVIDER == 1:
-            print("Using HuggingFace Inference API")
-            return HuggingFaceBackend()
-        elif LLM_PROVIDER == 2:
             print("Using Ollama Local LLM")
             return OllamaBackend()
-        elif LLM_PROVIDER == 3:
+        elif LLM_PROVIDER == 2:
             print("Using Google Vertex AI Gemini")
             return GeminiVertexAIBackend()
         else:
-            raise ValueError(f"Invalid LLM_PROVIDER: {LLM_PROVIDER}. Choose 1, 2, or 3")
+            raise ValueError(f"Invalid LLM_PROVIDER: {LLM_PROVIDER}. Choose 2 or 3")
     except Exception as e:
         print(f"Error initializing LLM backend: {str(e)}")
         # Fallback to Ollama

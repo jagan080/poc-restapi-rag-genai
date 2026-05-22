@@ -15,10 +15,6 @@ export ZONE="us-central1-a"
 # Enable Google Cloud APIs
 gcloud services enable run.googleapis.com container.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com
 
-# Create secrets
-gcloud secrets create huggingface-api-key --replication-policy="automatic"
-echo -n "your-api-key" | gcloud secrets versions add huggingface-api-key --data-file=-
-
 # ============================================
 # LOCAL DEVELOPMENT
 # ============================================

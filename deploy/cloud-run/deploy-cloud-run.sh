@@ -41,7 +41,6 @@ gcloud run deploy $SERVICE_NAME \
     --cpu 1 \
     --timeout 300 \
     --set-env-vars "APP_ENV=production,LLM_PROVIDER=3,LOG_LEVEL=INFO" \
-    --set-secrets "HUGGINGFACE_API_KEY=huggingface-api-key:latest" \
     --allow-unauthenticated \
     --max-instances 100
 

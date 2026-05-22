@@ -25,7 +25,6 @@ PyMuPDF>=1.23.0
 
 # APIs and HTTP
 requests>=2.31.0
-huggingface_hub>=0.19.4
 
 # Google Cloud
 google-cloud-aiplatform>=1.149.0

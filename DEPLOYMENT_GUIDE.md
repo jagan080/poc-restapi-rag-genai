@@ -80,14 +80,6 @@ gcloud services enable \
 ### Step 2: Create Secrets in Secret Manager
 
 ```bash
-# Create secrets for sensitive data
-gcloud secrets create huggingface-api-key \
-  --replication-policy="automatic"
-
-# Add the secret value (interactive)
-echo -n "your-actual-api-key" | \
-  gcloud secrets versions add huggingface-api-key --data-file=-
-
 # Create GCP project secret
 gcloud secrets create gcp-project-id \
   --replication-policy="automatic"
@@ -146,7 +138,6 @@ gcloud run deploy rag-genai-api \
   --timeout 300 \
   --max-instances 100 \
   --set-env-vars "APP_ENV=production,LLM_PROVIDER=3,LOG_LEVEL=INFO" \
-  --set-secrets "HUGGINGFACE_API_KEY=huggingface-api-key:latest,GCP_PROJECT_ID=gcp-project-id:latest" \
   --allow-unauthenticated
 ```
 

@@ -38,11 +38,6 @@ spec:
             secretKeyRef:
               name: rag-secrets
               key: gcp_project_id
-        - name: HUGGINGFACE_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: rag-secrets
-              key: huggingface_api_key
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: "/var/secrets/google/key.json"
         volumeMounts:
