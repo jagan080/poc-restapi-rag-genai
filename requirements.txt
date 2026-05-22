@@ -21,6 +21,7 @@ langchain-huggingface>=0.0.1
 langgraph>=0.0.20
 pypdf>=3.17.1
 python-docx>=0.8.11
+PyMuPDF>=1.23.0
 
 # APIs and HTTP
 requests>=2.31.0

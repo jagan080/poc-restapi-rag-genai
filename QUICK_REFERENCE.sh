@@ -51,10 +51,20 @@ python app.py
 # Build image
 docker build -t rag-genai-api:latest code/src/
 
-# Run container
-docker run -p 5000:5000 \
-  -e LLM_PROVIDER=3 \
-  -e GOOGLE_CLOUD_PROJECT=$PROJECT_ID \
+# Run container with .env file (Recommended)
+docker run -p 5001:5000 \
+  --env-file code/src/.env \
+  rag-genai-api:latest
+
+# Run container with volume mount for .env
+docker run -p 5001:5000 \
+  -v $(pwd)/code/src/.env:/app/.env \
+  rag-genai-api:latest
+
+# Run container with Ollama (using .env file)
+# Make sure Ollama is running: ollama serve
+docker run -p 5001:5000 \
+  --env-file code/src/.env \
   rag-genai-api:latest
 
 # View logs
@@ -68,32 +78,37 @@ docker push gcr.io/$PROJECT_ID/rag-genai-api:latest
 # CLOUD RUN - QUICK DEPLOY
 # ============================================
 
-# Deploy using script
+# Deploy using script (recommended)
 cd deploy/cloud-run
 bash deploy-cloud-run.sh $PROJECT_ID $REGION
 
-# Or manual deploy
+# Or manual deploy with environment variables from .env file
+# Load env variables into shell
+export $(cat code/src/.env | grep -v '^#' | xargs)
+
+# Deploy to Cloud Run
 gcloud run deploy rag-genai-api \
   --image gcr.io/$PROJECT_ID/rag-genai-api:latest \
   --region $REGION \
   --platform managed \
   --memory 2Gi \
   --cpu 1 \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --set-env-vars "LLM_PROVIDER=2,APP_HOST=0.0.0.0,APP_PORT=5000,LOG_LEVEL=INFO,RAG_TOP_K=3"
 
-# Get service URL
-gcloud run services describe rag-genai-api --region $REGION --format 'value(status.url)'
+# Or use environment file with Cloud Run (store variables in Secret Manager first)
+# 1. Create secrets for sensitive vars
+gcloud secrets create llm-provider --data-file=- <<< "2"
+gcloud secrets create app-port --data-file=- <<< "5000"
 
-# View logs
-gcloud run logs read rag-genai-api --limit 50
-
-# Update service
+# 2. Deploy referencing secrets
 gcloud run deploy rag-genai-api \
   --image gcr.io/$PROJECT_ID/rag-genai-api:latest \
-  --region $REGION
-
-# Delete service
-gcloud run services delete rag-genai-api --region $REGION
+  --region $REGION \
+  --platform managed \
+  --memory 2Gi \
+  --set-secrets "LLM_PROVIDER=llm-provider:latest,APP_PORT=app-port:latest" \
+  --set-env-vars "APP_HOST=0.0.0.0,LOG_LEVEL=INFO"
 
 # ============================================
 # GKE - QUICK DEPLOY

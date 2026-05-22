@@ -12,11 +12,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from docx import Document
 from google.oauth2 import service_account
-from agent_setup import run_agent
 from vertexai.preview.language_models import TextEmbeddingModel
 
 # Load environment variables
 load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 #embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
 
@@ -166,8 +166,7 @@ llm_backend = get_llm_backend()
 
 
 # Initialize ChromaDB
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CHROMA_DB_PATH = os.path.join(BASE_DIR, "chroma_db")
+CHROMA_DB_PATH = os.path.join(BASE_DIR, os.getenv("CHROMA_DB_PATH"))
 chroma_client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
 collection = chroma_client.get_or_create_collection(name="rag_docs")
 

@@ -10,6 +10,7 @@ from rag import retrieve_context, generate_response, load_initial_knowledge
 
 # Load environment variables
 load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Configure logging
 logging.basicConfig(
@@ -54,7 +55,7 @@ async def lifespan(app: FastAPI):
     global knowledge_base_loaded
     try:
         logger.info("Loading knowledge base at application startup...")
-        load_initial_knowledge(os.getenv("KB_DATA_FOLDER"))
+        load_initial_knowledge(os.path.join(BASE_DIR,os.getenv("KB_DATA_FOLDER")))
         knowledge_base_loaded = True
         logger.info("Knowledge base loaded successfully!")
     except Exception as e:
@@ -146,7 +147,7 @@ async def reload_knowledge_base():
     global knowledge_base_loaded
     try:
         logger.info("Manually reloading knowledge base...")
-        load_initial_knowledge(os.getenv("KB_DATA_FOLDER", "data"))
+        load_initial_knowledge(os.path.join(BASE_DIR, os.getenv("KB_DATA_FOLDER")))
         knowledge_base_loaded = True
         logger.info("Knowledge base reloaded successfully!")
         return {
