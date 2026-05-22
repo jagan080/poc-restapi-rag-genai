@@ -41,7 +41,7 @@ class HuggingFaceBackend(LLMBackend):
     def __init__(self):
         self.client = InferenceClient(
             provider="hf-inference",
-            api_key=os.getenv("HUGGINGFACE_API_KEY"),
+            api_key=os.getenv("HUGGINGFACE_API_KEY", ""),
             model="katanemo/Arch-Router-1.5B",
         )
     
@@ -107,7 +107,7 @@ class GeminiVertexAIBackend(LLMBackend):
                 raise FileNotFoundError(f"GOOGLE_APPLICATION_CREDENTIALS file not found: {KEY_PATH}")
             
             credentials = service_account.Credentials.from_service_account_file(KEY_PATH)
-            project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+            project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "")
             location = os.getenv("VERTEX_AI_LOCATION", "us-central1")
             model_name = os.getenv("VERTEX_AI_MODEL", "gemini-2.5-pro")
             
@@ -166,7 +166,7 @@ llm_backend = get_llm_backend()
 
 
 # Initialize ChromaDB
-CHROMA_DB_PATH = os.path.join(BASE_DIR, os.getenv("CHROMA_DB_PATH"))
+CHROMA_DB_PATH = os.path.join(BASE_DIR, os.getenv("CHROMA_DB_PATH", "chroma_db"))
 chroma_client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
 collection = chroma_client.get_or_create_collection(name="rag_docs")
 

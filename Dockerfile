@@ -28,7 +28,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /root/.local /home/appuser/.local
 
 # Copy application code
-COPY . /app/
+COPY code/src/*.py /app/
+
+# Copy data folder
+COPY code/src/data /app/data/
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \

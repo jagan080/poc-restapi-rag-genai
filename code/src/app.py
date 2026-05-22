@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
     global knowledge_base_loaded
     try:
         logger.info("Loading knowledge base at application startup...")
-        load_initial_knowledge(os.path.join(BASE_DIR,os.getenv("KB_DATA_FOLDER")))
+        load_initial_knowledge(os.path.join(BASE_DIR,os.getenv("KB_DATA_FOLDER", "data")))
         knowledge_base_loaded = True
         logger.info("Knowledge base loaded successfully!")
     except Exception as e:
@@ -147,7 +147,7 @@ async def reload_knowledge_base():
     global knowledge_base_loaded
     try:
         logger.info("Manually reloading knowledge base...")
-        load_initial_knowledge(os.path.join(BASE_DIR, os.getenv("KB_DATA_FOLDER")))
+        load_initial_knowledge(os.path.join(BASE_DIR, os.getenv("KB_DATA_FOLDER", "data")))
         knowledge_base_loaded = True
         logger.info("Knowledge base reloaded successfully!")
         return {
@@ -187,8 +187,8 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     
-    app_host = os.environ["APP_HOST"]
-    app_port = int(os.environ["APP_PORT"])
+    app_host = os.environ.get("APP_HOST", "0.0.0.0")
+    app_port = int(os.environ.get("APP_PORT", "5000"))
     debug_mode = os.environ.get("APP_ENV", "development") == "development"
     log_level = os.environ.get("LOG_LEVEL", "info").lower()
     
