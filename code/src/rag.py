@@ -102,11 +102,9 @@ class GeminiVertexAIBackend(LLMBackend):
         try:
             import vertexai
             from vertexai.preview.generative_models import GenerativeModel
+            from google.auth import default
+            from google.auth.environment_vars import CREDENTIALS as CREDENTIALS_ENV
             
-            if not KEY_PATH or not os.path.exists(KEY_PATH):
-                raise FileNotFoundError(f"GOOGLE_APPLICATION_CREDENTIALS file not found: {KEY_PATH}")
-            
-            credentials = service_account.Credentials.from_service_account_file(KEY_PATH)
             project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "")
             location = os.getenv("VERTEX_AI_LOCATION", "us-central1")
             model_name = os.getenv("VERTEX_AI_MODEL", "gemini-2.5-pro")
@@ -114,12 +112,35 @@ class GeminiVertexAIBackend(LLMBackend):
             if not project_id:
                 raise ValueError("GOOGLE_CLOUD_PROJECT environment variable not set")
             
+            # Determine if running on Google Cloud (Cloud Run or GKE)
+            is_cloud_run = os.getenv("CLOUD_RUN_JOB_EXECUTION") is not None or os.getenv("K_SERVICE") is not None
+            is_gke = os.getenv("KUBERNETES_SERVICE_HOST") is not None
+            on_google_cloud = is_cloud_run or is_gke
+            
+            credentials = None
+            if on_google_cloud:
+                # Use default credentials (Application Default Credentials)
+                # This automatically uses the service account on Cloud Run/GKE
+                print("Running on Google Cloud - using Application Default Credentials")
+                credentials, _ = default()
+            else:
+                # Local development: require GOOGLE_APPLICATION_CREDENTIALS file
+                if not KEY_PATH or not os.path.exists(KEY_PATH):
+                    raise FileNotFoundError(
+                        f"GOOGLE_APPLICATION_CREDENTIALS file not found at: {KEY_PATH}\n"
+                        f"For local development, set GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json\n"
+                        f"For Cloud Run/GKE, ensure the service account has Vertex AI permissions"
+                    )
+                print(f"Using credentials from: {KEY_PATH}")
+                credentials = service_account.Credentials.from_service_account_file(KEY_PATH)
+            
             vertexai.init(
                 project=project_id,
                 location=location,
                 credentials=credentials,
             )
             self.model = GenerativeModel(model_name)
+            print(f"Vertex AI initialized with project: {project_id}, model: {model_name}")
         except ImportError as e:
             raise ImportError(f"Vertex AI dependencies not installed: {str(e)}. Run: pip install google-cloud-aiplatform")
     
