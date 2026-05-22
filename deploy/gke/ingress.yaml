@@ -1,0 +1,64 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rag-genai-ingress
+  namespace: rag-genai
+  annotations:
+    kubernetes.io/ingress.class: gce
+    kubernetes.io/ingress.global-static-ip-name: rag-genai-ip
+    networking.gke.io/managed-certificates: rag-genai-cert
+    kubernetes.io/ingress.allow-http: "true"
+spec:
+  rules:
+  - host: rag-api.example.com
+    http:
+      paths:
+      - path: /*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: rag-genai-api-service
+            port:
+              number: 80
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: rag-genai-cert
+  namespace: rag-genai
+spec:
+  domains:
+  - rag-api.example.com
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: rag-genai-backendconfig
+  namespace: rag-genai
+spec:
+  healthChecks:
+  - checkIntervalSec: 30
+    timeoutSec: 10
+    type: HTTP
+    requestPath: /health
+    port: 5000
+  sessionAffinity:
+    affinityType: CLIENT_IP
+    affinityCookieTtlSec: 3600
+  timeoutSec: 30
+  connectionDraining:
+    drainingTimeoutSec: 60
+  iap:
+    enabled: false
+  cdn:
+    enabled: true
+    cachePolicy:
+      includeHost: true
+      includeProtocol: true
+      includeQueryString: false
+      negativeCaching: true
+      negativeCachingPolicy:
+      - code: 404
+        ttlSec: 120
+      - code: 500
+        ttlSec: 60

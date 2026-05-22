@@ -151,7 +151,9 @@ llm_backend = get_llm_backend()
 
 
 # Initialize ChromaDB
-chroma_client = chromadb.PersistentClient(path="gaipl-the-ai-vengers/code/src/chroma_db")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CHROMA_DB_PATH = os.path.join(BASE_DIR, "chroma_db")
+chroma_client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
 collection = chroma_client.get_or_create_collection(name="rag_docs")
 
 # Lazy-load Embedding Model to avoid network issues at import time
@@ -198,12 +200,22 @@ def extract_text_from_pdf(pdf_path):
     """Extract text from PDF file (handles both file paths and file-like objects)"""
     try:
         text_list = []
-        with fitz.open(stream=pdf_path, filetype="pdf") as doc:
-            print(f"Number of pages in PDF: {doc.page_count}")
-            for page in doc:
-                page_text = page.get_text("text")
-                if page_text.strip():
-                    text_list.append(page_text.strip())
+        # If pdf_path is a string (file path), open it directly
+        # If it's bytes or file-like object, use stream parameter
+        if isinstance(pdf_path, str):
+            with fitz.open(pdf_path) as doc:
+                print(f"Number of pages in PDF: {doc.page_count}")
+                for page in doc:
+                    page_text = page.get_text("text")
+                    if page_text.strip():
+                        text_list.append(page_text.strip())
+        else:
+            with fitz.open(stream=pdf_path, filetype="pdf") as doc:
+                print(f"Number of pages in PDF: {doc.page_count}")
+                for page in doc:
+                    page_text = page.get_text("text")
+                    if page_text.strip():
+                        text_list.append(page_text.strip())
         return text_list if text_list else [""]
     except Exception as e:
         print(f"Error extracting PDF: {str(e)}")
