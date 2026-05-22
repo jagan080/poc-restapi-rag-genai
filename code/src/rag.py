@@ -7,6 +7,7 @@ import fitz  # PyMuPDF
 import json
 import os
 import requests
+from dotenv import load_dotenv
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from docx import Document
@@ -14,13 +15,17 @@ from google.oauth2 import service_account
 from agent_setup import run_agent
 from vertexai.preview.language_models import TextEmbeddingModel
 
+# Load environment variables
+load_dotenv()
+
 #embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
 
 # ============================================
-# CONFIGURATION: Choose LLM Provider (1, 2, or 3)
+# CONFIGURATION: Load from environment variables
 # ============================================
-LLM_PROVIDER = 3  # Change this to switch: 1=HuggingFace, 2=Ollama, 3=Gemini Vertex AI
-KEY_PATH = "ai-demo-495305-6fa129b22c7a.json"
+# LLM_PROVIDER: 1=HuggingFace, 2=Ollama, 3=Gemini Vertex AI
+LLM_PROVIDER = int(os.getenv("LLM_PROVIDER", "2"))
+KEY_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
 
 # ============================================
 # LLM Backend Abstraction
@@ -98,13 +103,23 @@ class GeminiVertexAIBackend(LLMBackend):
             import vertexai
             from vertexai.preview.generative_models import GenerativeModel
             
+            if not KEY_PATH or not os.path.exists(KEY_PATH):
+                raise FileNotFoundError(f"GOOGLE_APPLICATION_CREDENTIALS file not found: {KEY_PATH}")
+            
             credentials = service_account.Credentials.from_service_account_file(KEY_PATH)
+            project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+            location = os.getenv("VERTEX_AI_LOCATION", "us-central1")
+            model_name = os.getenv("VERTEX_AI_MODEL", "gemini-2.5-pro")
+            
+            if not project_id:
+                raise ValueError("GOOGLE_CLOUD_PROJECT environment variable not set")
+            
             vertexai.init(
-                project="ai-demo-495305",
-                location="us-central1",
+                project=project_id,
+                location=location,
                 credentials=credentials,
             )
-            self.model = GenerativeModel("gemini-2.5-pro")
+            self.model = GenerativeModel(model_name)
         except ImportError as e:
             raise ImportError(f"Vertex AI dependencies not installed: {str(e)}. Run: pip install google-cloud-aiplatform")
     

@@ -186,9 +186,10 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     
-    app_host = os.getenv("APP_HOST", "0.0.0.0")
-    app_port = int(os.getenv("APP_PORT", "5001"))
-    debug_mode = os.getenv("APP_ENV", "development") == "development"
+    app_host = os.environ["APP_HOST"]
+    app_port = int(os.environ["APP_PORT"])
+    debug_mode = os.environ.get("APP_ENV", "development") == "development"
+    log_level = os.environ.get("LOG_LEVEL", "info").lower()
     
     logger.info(f"Starting RAG GenAI API on {app_host}:{app_port}")
     
@@ -197,5 +198,5 @@ if __name__ == "__main__":
         host=app_host,
         port=app_port,
         reload=debug_mode,
-        log_level=os.getenv("LOG_LEVEL", "info").lower()
+        log_level=log_level
     )
