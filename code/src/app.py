@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
     global knowledge_base_loaded
     try:
         logger.info("Loading knowledge base at application startup...")
-        load_initial_knowledge(os.getenv("KB_DATA_FOLDER", "data"))
+        load_initial_knowledge(os.getenv("KB_DATA_FOLDER"))
         knowledge_base_loaded = True
         logger.info("Knowledge base loaded successfully!")
     except Exception as e:
@@ -187,7 +187,7 @@ if __name__ == "__main__":
     import uvicorn
     
     app_host = os.getenv("APP_HOST", "0.0.0.0")
-    app_port = int(os.getenv("APP_PORT", "5000"))
+    app_port = int(os.getenv("APP_PORT", "5001"))
     debug_mode = os.getenv("APP_ENV", "development") == "development"
     
     logger.info(f"Starting RAG GenAI API on {app_host}:{app_port}")
